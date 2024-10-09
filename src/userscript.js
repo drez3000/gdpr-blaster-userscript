@@ -7,7 +7,7 @@
 // @tag          productivity
 // @match        *://*/*
 // @grant        none
-// @version      0.1.1
+// @version      0.1.2
 // @updateURL    https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.js
 // @downloadURL  https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.js
 // ==/UserScript==
@@ -107,7 +107,6 @@
 			/^privacyPolicy$/i,
 			/^tracking$/i,
 			/^privacy$/i,
-			/^cmpbox$/i,
 			/^consent$/i,
 			/^qc-cmp-ui-container$/i,
 			/^qc-cmp-showing$/i,
@@ -116,16 +115,7 @@
 			/^BorlabsCookie$/i,
 			/^osano-cm-window$/i,
 			/^js-cookie-consent-banner$/i,
-			/^ppms_cm_popup_overlay$/i,
 			/^hx_cookie-banner$/i,
-			/^as-oil$/i,
-			/^gdpr$/i,
-			/^cookies$/i,
-			/^cookie$/i,
-			/^privacy-policy$/i,
-			/^privacyPolicy$/i,
-			/^tracking$/i,
-			/^cmpbox$/i,
 		]
 		const classes = node.className.split(' ')
 		const id = node.id.toLowerCase()
