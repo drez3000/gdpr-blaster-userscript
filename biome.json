@@ -31,9 +31,6 @@
 			},
 			"complexity": {
 				"useOptionalChain": "off"
-			},
-			"security": {
-				"noGlobalEval": "off"
 			}
 		}
 	},
