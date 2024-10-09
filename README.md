@@ -19,7 +19,7 @@ GDPR Blaster is a userscript designed to detect and remove GDPR and cookie conse
 - **Opera**: Install [this](https://addons.opera.com/en/extensions/details/install-chrome-extensions/) extension first, then you can install Violentmonkey or Tampermonkey from the Chrome extension store.
 - **Microsoft Edge**: Install [Violentmonkey](https://microsoftedge.microsoft.com/addons/detail/violentmonkey/eeagobfjdenkkddmbclomhiblgggliao) or [Tampermonkey](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd) from the Edge Add-On Repository.
 
-### 2. Click [here to open the script](https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js)
+### 2. Click [here](https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js)
 
 ### 3. Confirm your intention to install the userscript
 
