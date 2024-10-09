@@ -1,21 +1,17 @@
 // ==UserScript==
 // @name         GDPR Blaster
 // @description  Automatically removes GDPR / Cookie Consent dialogs without accepting or denying them.
-// @namespace    http://crisali.de/
-// @author       drez3000@protonmail.com
-// @copyright    2024, drez3000@protonmail.com (https://crisali.de)
+// @namespace    drez3000
+// @author       drez3000
+// @copyright    2024, drez3000 (https://github.com/drez3000)
 // @license      MIT
 // @tag          productivity
 // @match        *://*/*
 // @grant        none
-// @version      0.1.5
+// @version      0.1.6
 // @updateURL    https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.js
 // @downloadURL  https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.js
 // ==/UserScript==
-
-// ==OpenUserJS==
-// @author        drez3000
-// ==/OpenUserJS==
 
 ;(() => {
 	'use strict'
