@@ -28,7 +28,7 @@ async function wait(ms) {
 	return new Promise((res) => setTimeout(res, ms))
 }
 
-describe('userscript.js', () => {
+describe('userscript.user.js', () => {
 	let browser
 	beforeAll(async () => {
 		// chromium headless still behaves differently
@@ -57,7 +57,7 @@ describe('userscript.js', () => {
 
 			// Ensure gdpr banner gets obliterated
 			hadGdprModalsBefore = await page.evaluate((qs) => document.querySelectorAll(qs).length > 0, qs)
-			await page.addScriptTag({ path: path.resolve(__dirname, '../userscript.js') })
+			await page.addScriptTag({ path: path.resolve(__dirname, '../userscript.user.js') })
 			hadGdprModalsAfter = await page.evaluate((qs) => document.querySelectorAll(qs).length > 0, qs)
 
 			// Ensure scroll works (if content height > window height)

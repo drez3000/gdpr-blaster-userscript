@@ -8,9 +8,9 @@
 // @tag          productivity
 // @match        *://*/*
 // @grant        none
-// @version      0.1.6
-// @updateURL    https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.js
-// @downloadURL  https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.js
+// @version      0.1.7
+// @updateURL    https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js
+// @downloadURL  https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js
 // ==/UserScript==
 
 ;(() => {
