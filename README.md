@@ -21,4 +21,4 @@ Use this userscript at your own risk. The authors are not responsible for any po
 
 ## License
 
-This is an open source project licensed under MIT. See `LICENSE` file for details.
+This is an open source project released under MIT license. See `LICENSE` file for details.
