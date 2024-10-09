@@ -1,0 +1,27 @@
+{
+  "name": "gdpr-blaster-userscript",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GDPR Blaster is a userscript designed to detect and remove GDPR and cookie consent dialogs from websites without accepting or denying them.",
+  "main": "src/userscript.js",
+  "scripts": {
+    "test": "bun test --timeout 60000"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/drez3000/gdpr-blaster-userscript.git"
+  },
+  "keywords": [
+    "gdpr"
+  ],
+  "author": "drez3000@protonmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/drez3000/gdpr-blaster-userscript/issues"
+  },
+  "homepage": "https://github.com/drez3000/gdpr-blaster-userscript#readme",
+  "devDependencies": {
+    "@biomejs/biome": "1.9.3",
+    "puppeteer": "^23.5.1"
+  }
+}
