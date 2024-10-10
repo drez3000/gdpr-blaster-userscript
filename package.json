@@ -1,9 +1,9 @@
 {
   "name": "gdpr-blaster-userscript",
-  "version": "0.1.0",
+  "version": "0.1.9",
   "private": true,
   "description": "GDPR Blaster is a userscript designed to detect and remove GDPR and cookie consent dialogs from websites without accepting or denying them.",
-  "main": "src/userscript.js",
+  "main": "src/userscript.user.js",
   "scripts": {
     "test": "bun test --timeout 60000"
   },
