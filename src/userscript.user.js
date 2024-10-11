@@ -8,7 +8,7 @@
 // @tag          productivity
 // @match        *://*/*
 // @grant        none
-// @version      0.1.9
+// @version      0.1.10
 // @updateURL    https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js
 // @downloadURL  https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js
 // ==/UserScript==
@@ -139,13 +139,15 @@
 			/\bconfig/i,
 			/\bimposta/i,
 			/\b(non)?(-)?essen(t|z)ial\b/i,
+			/\b(ab)?lehnen?/i,
 		]
-		const contentHints = [/\bcookie\b/i, /(we|this site) use(s)?/i]
+		const contentHints = [/\bcookie(s)?\b/i, /(we|this site) use(s)?/i]
 
 		const clickableElements = subtreeMatching(
 			node,
 			(node) =>
 				node?.tagName?.match(/^(button|a)$/i) ||
+				node?.classList?.toString().match(/(button|btn|clickable)/i) ||
 				(node?.tagName?.match(/^input$/i) && node?.attributes?.type?.value?.match(/^submit$/i)),
 		)
 
@@ -196,7 +198,8 @@
 	function containsClickableSomething(node) {
 		return (
 			typeof node?.querySelector === 'function' &&
-			(node.querySelector('button') || node.querySelector('a') || node.querySelector('input[type="submit"]'))
+			(node.querySelector('button, a, input[type="submit"]') ||
+				subtreeMatching(node, (node) => node?.classList?.toString().match(/(button|btn|clickable)/i)).length)
 		)
 	}
 
