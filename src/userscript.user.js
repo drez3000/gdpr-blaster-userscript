@@ -8,7 +8,7 @@
 // @tag          productivity
 // @match        *://*/*
 // @grant        none
-// @version      0.1.10
+// @version      0.1.11
 // @updateURL    https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js
 // @downloadURL  https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js
 // ==/UserScript==
@@ -182,8 +182,9 @@
 		const va = window.innerHeight * window.innerWidth
 		const nr = node?.getBoundingClientRect && node.getBoundingClientRect()
 		const na = nr && nr.width * nr.height
-		const rat = na && Math.sqrt(na) / Math.sqrt(va)
-		return rat > 0.05 && rat < 1.1 && nr.height < window.innerHeight && nr.width >= nr.height
+		const rat1 = na && Math.sqrt(na) / Math.sqrt(va)
+		const rat2 = nr && nr.width / nr.height
+		return rat1 > 0.05 && rat1 < 1.1 && rat2 > 0.9 && nr.height < window.innerHeight
 	}
 
 	function isInViewport(node) {
@@ -281,9 +282,13 @@
 		// Many websites disable scrolling when the gdpr dialog is open
 		// Since we harshly remove()'d the dialogs, we need to do our best to ensure user can scroll page content
 
-		const elements = [document.body, document.querySelector('html'), document.documentElement, document.scrollingElement].filter(
-			(x) => !!x,
-		)
+		const elements = [
+			document.body,
+			document.querySelector('html'),
+			document.querySelector('main') || document.querySelector('#main'),
+			document.documentElement,
+			document.scrollingElement,
+		].filter((x) => !!x)
 
 		const needles = [/no[-_]?scroll/i, /scroll(ing)?[-_]?disabl/i, /disabl.*scroll/i, /(modal|popup|banner|gdpr|consent)[-_]?open/i]
 
@@ -296,7 +301,7 @@
 					}
 				}
 			}
-			element.style.overflow = ''
+			element.style.overflow = 'scroll'
 			element.style.position = ''
 		}
 	}
