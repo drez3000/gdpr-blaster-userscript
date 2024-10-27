@@ -8,18 +8,21 @@
 // @tag          productivity
 // @match        *://*/*
 // @grant        none
-// @version      0.1.11
+// @version      0.1.12
 // @updateURL    https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js
 // @downloadURL  https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js
 // ==/UserScript==
 
-;(() => {
+; (() => {
 	'use strict'
 
 	const ATTEMPTS = 16
 	const PASSES = 3
-	const MAX_OVERLAY_REMOVAL_DEPTH = 5
+	const MAX_OVERLAY_REMOVAL_DEPTH = 10
+	const MAX_OVERLAY_REMOVALS = 2
+	const MAX_DIALOG_REMOVALS = 1
 	const MAX_CHECK_DELAY_MS = 200
+	const MAX_SHADOW_ROOT_CRAWL_DEPTH = 24
 	const MAX_TRIGGERS = 1
 
 	function all(conditions, item) {
@@ -67,6 +70,31 @@
 		return flatNodesOf(element)
 			.reverse()
 			.filter((node) => all(conditions, node))
+	}
+
+	function getBoundingClientRectWithShadowRoot(node) {
+
+		const nodes = flatNodesOf(node, { maxDepth: MAX_SHADOW_ROOT_CRAWL_DEPTH })
+		const parentRect = {
+			top: Infinity, left: Infinity,
+			right: -Infinity, bottom: -Infinity,
+			width: 0, height: 0
+		}
+
+		for (let node of nodes) {
+			const childRect = node?.getBoundingClientRect && node.getBoundingClientRect()
+			if (!childRect || (childRect.bottom === childRect.top && childRect.left === childRect.right)) {
+				continue
+			}
+			if (childRect?.top < parentRect.top) { parentRect.top = childRect.top }
+			if (childRect?.left < parentRect.left) { parentRect.left = childRect.left }
+			if (childRect?.right > parentRect.right) { parentRect.right = childRect.right }
+			if (childRect?.bottom > parentRect.bottom) { parentRect.bottom = childRect.bottom }
+		}
+		parentRect.width = parentRect.right - parentRect.left
+		parentRect.height = parentRect.bottom - parentRect.top
+
+		return parentRect
 	}
 
 	function methodA(node) {
@@ -117,27 +145,31 @@
 			/^osano-cm-window$/i,
 			/^js-cookie-consent-banner$/i,
 			/^hx_cookie-banner$/i,
+			/^ytd-consent-bump-v2-lightbox$/i,
 		]
-		const classes = node.className.split(' ')
+		const classes = [...(node?.classList || [])]
 		const id = node.id.toLowerCase()
-		const haystack = classes.concat(id)
+		const haystack = [id].concat(classes)
 		const conditions = banlist.map((ban) => (hay) => hay.match(ban))
 		const matches = undefined !== haystack.find((hay) => any(conditions, hay))
 		return matches
 	}
 
 	function methodB(node) {
-		const confirmationHints = [/\ba(cc|kz)e(p)?t/i, /\bagree/i, /\bconsent\b/i, /\bcontinu\b/i, /\benable\b/i, /\ballow\b/i, /\bok\b/i]
+
+		if (!hasPlausibleSize(node)) {
+			return false
+		}
+
+		const confirmationHints = [/\ba(cc|kz)e(p)?t/i, /\bagree\b/i, /\bconsent\b/i, /\bcontinue\b/i, /\benable\b/i, /\ballow\b/i, /\bok\b/i]
 		const denialHints = [
 			/\breject\b/i,
 			/\brifiuta\b/i,
 			/\bdeny\b/i,
 			/\bclose\b/i,
 			/\boptions\b/i,
-			/\bprefer/i,
-			/\bsetting/i,
-			/\bconfig/i,
-			/\bimposta/i,
+			/\bcookie\bpreferences\b/i,
+			/\bcookie\bsettings\b/i,
 			/\b(non)?(-)?essen(t|z)ial\b/i,
 			/\b(ab)?lehnen?/i,
 		]
@@ -145,20 +177,34 @@
 
 		const clickableElements = subtreeMatching(
 			node,
-			(node) =>
-				node?.tagName?.match(/^(button|a)$/i) ||
-				node?.classList?.toString().match(/(button|btn|clickable)/i) ||
-				(node?.tagName?.match(/^input$/i) && node?.attributes?.type?.value?.match(/^submit$/i)),
+			[
+				(node) => (
+					node?.tagName?.match(/^a$/i) ||
+					node?.tagName?.match(/button/i) ||
+					node?.classList?.toString().match(/(button|btn|clickable)/i) ||
+					(node?.tagName?.match(/^input$/i) && node?.attributes?.type?.value?.match(/^submit$/i))
+				)
+			]
 		)
 
+		const controlElementRequirements = [
+			(node) => typeof node?.innerText === 'string' && typeof node?.innerText?.match === 'function',
+			(node) => !node?.classList?.toString().match(/(auth|login|log-in|signin|sign-in|signup|sign-up|register|registration)/i),
+			(node) => node?.innerText?.length <= 32,
+			(node) => !node?.innerText.match(/(auth|login|log in|signin|sign in|signup|sign up|register|registration)/i),
+		]
+
+		const controlElements = clickableElements.filter(el => all(controlElementRequirements, el))
+
 		const acceptConditions = confirmationHints.map((h) => (t) => t.match(h))
-		const has1Accept = clickableElements.find((el) => any(acceptConditions, el.innerText))
+		const has1Accept = controlElements.find((el) => any(acceptConditions, el.innerText))
 
 		const denyConditions = denialHints.map((h) => (t) => t.match(h))
-		const has1Deny = clickableElements.find((el) => any(denyConditions, el.innerText))
+		const has1Deny = controlElements.find((el) => any(denyConditions, el.innerText))
 
 		const contentConditions = contentHints.map((h) => (t) => t.match(h))
-		const hasMatchingContent = any(contentConditions, node.innerText)
+		const haystackText = node?.innerText || ''
+		const hasMatchingContent = any(contentConditions, haystackText)
 
 		return !!(node && clickableElements.length >= 2 && (has1Accept || has1Deny) && hasMatchingContent)
 	}
@@ -170,7 +216,7 @@
 		const qs = whitelist.join(', ')
 		const found = node.querySelector(qs)
 		const tagName = node?.tagName?.toLowerCase() || ''
-		return !whitelist.includes(tagName) && !found
+		return !whitelist.includes(tagName) && node.role != 'main' && !found
 	}
 
 	function isNotWhitelisted(node) {
@@ -180,7 +226,7 @@
 
 	function hasPlausibleSize(node) {
 		const va = window.innerHeight * window.innerWidth
-		const nr = node?.getBoundingClientRect && node.getBoundingClientRect()
+		const nr = node?.getBoundingClientRect && getBoundingClientRectWithShadowRoot(node)
 		const na = nr && nr.width * nr.height
 		const rat1 = na && Math.sqrt(na) / Math.sqrt(va)
 		const rat2 = nr && nr.width / nr.height
@@ -192,7 +238,7 @@
 		const isFixed = !!style && style.position === 'fixed'
 		const fromY = !isFixed ? window.scrollY : 0
 		const toY = !isFixed ? fromY + window.innerHeight : window.innerHeight
-		const bb = node?.getBoundingClientRect && node.getBoundingClientRect()
+		const bb = node?.getBoundingClientRect && getBoundingClientRectWithShadowRoot(node)
 		return bb && ((bb.top >= fromY && bb.top <= toY) || (bb.bottom >= fromY && bb.bottom <= toY))
 	}
 
@@ -204,7 +250,7 @@
 		)
 	}
 
-	function doesntContainInputFields(node) {
+	function doesntContainEditableInputFields(node) {
 		const inputTypes = [
 			'color',
 			'date',
@@ -217,7 +263,6 @@
 			'password',
 			'range',
 			'search',
-			'submit',
 			'tel',
 			'text',
 			'time',
@@ -232,7 +277,7 @@
 	function isOverlay(node) {
 		const style = window.getComputedStyle(node)
 		const viewport = window.innerHeight * window.innerWidth
-		const rect = node && node.getBoundingClientRect()
+		const rect = node?.getBoundingClientRect && node.getBoundingClientRect(node)
 		const area = node && rect.width * rect.height
 		const rat = area / viewport
 		return (
@@ -251,9 +296,8 @@
 			(node) => typeof node?.querySelectorAll === 'function',
 			(node) => isNotMain(node),
 			(node) => isNotWhitelisted(node),
-			(node) => hasPlausibleSize(node),
 			(node) => containsClickableSomething(node),
-			(node) => doesntContainInputFields(node),
+			(node) => doesntContainEditableInputFields(node),
 			(node) => isInViewport(node),
 			(node) => any(detectionMethods, node),
 		]).sort((a, b) => {
@@ -306,17 +350,18 @@
 		}
 	}
 
-	function removeOverlays() {
-		return flatNodesOf(document, { maxDepth: MAX_OVERLAY_REMOVAL_DEPTH })
+	function removeOverlays(node = document) {
+		return flatNodesOf(node, { maxDepth: MAX_OVERLAY_REMOVAL_DEPTH })
 			.filter((node) => {
 				return (
 					typeof node?.querySelector === 'function' &&
 					isNotWhitelisted(node) &&
 					isOverlay(node) &&
 					isNotMain(node) &&
-					doesntContainInputFields(node)
+					doesntContainEditableInputFields(node)
 				)
 			})
+			.slice(0, MAX_OVERLAY_REMOVALS)
 			.map((node) => {
 				console.info('[GDPR BLASTER] Removing overlay:', node)
 				node.remove && node.remove()
@@ -330,13 +375,16 @@
 			let once = 1
 			while (p--) {
 				if (canSeeGdprDialogs()) {
-					closeGdprDialogs(1)
+					closeGdprDialogs(MAX_DIALOG_REMOVALS)
 					triggered += once
 					once = 0
 				}
 				if (triggered && p === PASSES - 1) {
 					setTimeout(removeOverlays)
-					setTimeout(restoreScroll)
+					setTimeout(restoreScroll, 0)
+					setTimeout(restoreScroll, 10)
+					setTimeout(restoreScroll, 100)
+					setTimeout(restoreScroll, 1000)
 					triggered += once
 					once = 0
 				}
