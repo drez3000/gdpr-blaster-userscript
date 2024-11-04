@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GDPR Blaster
-// @description  Automatically removes GDPR / Cookie Consent dialogs without accepting or denying them.
+// @description  Automatically remove GDPR / Cookie Consent dialogs without accepting or denying prompts.
 // @namespace    drez3000
 // @author       drez3000
 // @copyright    2024, drez3000 (https://github.com/drez3000)
@@ -8,7 +8,7 @@
 // @tag          productivity
 // @match        *://*/*
 // @grant        none
-// @version      0.1.12
+// @version      0.2.0
 // @updateURL    https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js
 // @downloadURL  https://raw.githubusercontent.com/drez3000/gdpr-blaster-userscript/main/src/userscript.user.js
 // ==/UserScript==
@@ -16,14 +16,21 @@
 ; (() => {
 	'use strict'
 
-	const ATTEMPTS = 16
-	const PASSES = 3
-	const MAX_OVERLAY_REMOVAL_DEPTH = 10
-	const MAX_OVERLAY_REMOVALS = 2
-	const MAX_DIALOG_REMOVALS = 1
-	const MAX_CHECK_DELAY_MS = 200
+	const MAX_ATTEMPTS = 16
+	const MAX_TRIGGERS = 7
+	const MAX_DIALOG_REMOVALS = 5
+	const MAX_OVERLAY_REMOVALS = 5
+	const MAX_DIALOG_REMOVALS_PER_PASS = 2
+	const MAX_OVERLAY_REMOVALS_PER_PASS = 2
+
+	const MIN_CHECK_DELAY_MS = 50
+	const MAX_CHECK_DELAY_MS = 300
 	const MAX_SHADOW_ROOT_CRAWL_DEPTH = 24
-	const MAX_TRIGGERS = 1
+	const MAX_OVERLAY_REMOVAL_DEPTH = 12
+
+	let dialogsClosed = 0
+	let overlaysClosed = 0
+	let triggeredCount = 0
 
 	function all(conditions, item) {
 		return conditions.find((f) => !f(item)) === undefined
@@ -76,8 +83,8 @@
 
 		const nodes = flatNodesOf(node, { maxDepth: MAX_SHADOW_ROOT_CRAWL_DEPTH })
 		const parentRect = {
-			top: Infinity, left: Infinity,
-			right: -Infinity, bottom: -Infinity,
+			top: Number.POSITIVE_INFINITY, left: Number.POSITIVE_INFINITY,
+			right: Number.NEGATIVE_INFINITY, bottom: Number.NEGATIVE_INFINITY,
 			width: 0, height: 0
 		}
 
@@ -137,8 +144,9 @@
 			/^tracking$/i,
 			/^privacy$/i,
 			/^consent$/i,
-			/^qc-cmp-ui-container$/i,
-			/^qc-cmp-showing$/i,
+			/^qc-cmp[0-9]?-container$/i,
+			/^qc-cmp[0-9]?-ui-container$/i,
+			/^qc-cmp[0-9]?-showing$/i,
 			/^wt-cli-cookie-bar-container$/i,
 			/^wt-cli-cookie-bar$/i,
 			/^BorlabsCookie$/i,
@@ -309,20 +317,19 @@
 		})
 	}
 
-	function canSeeGdprDialogs() {
-		return getGdprDialogs().length > 0
-	}
-
-	function closeGdprDialogs(many = 1) {
+	function closeGdprDialogs(limit = 1) {
 		return getGdprDialogs()
-			.slice(0, many)
-			.map((dialog) => {
-				console.info('[GDPR BLASTER] Removing dialog:', dialog)
-				dialog.remove()
+			.filter(node => !!node.remove)
+			.slice(0, limit)
+			.map((node) => {
+				console.info('[GDPR BLASTER] Removing dialog:', node)
+				node.remove()
+				return node
 			})
 	}
 
 	function restoreScroll() {
+
 		// Many websites disable scrolling when the gdpr dialog is open
 		// Since we harshly remove()'d the dialogs, we need to do our best to ensure user can scroll page content
 
@@ -350,8 +357,8 @@
 		}
 	}
 
-	function removeOverlays(node = document) {
-		return flatNodesOf(node, { maxDepth: MAX_OVERLAY_REMOVAL_DEPTH })
+	function removeOverlays(limit = 1) {
+		return flatNodesOf(document, { maxDepth: MAX_OVERLAY_REMOVAL_DEPTH })
 			.filter((node) => {
 				return (
 					typeof node?.querySelector === 'function' &&
@@ -361,38 +368,61 @@
 					doesntContainEditableInputFields(node)
 				)
 			})
-			.slice(0, MAX_OVERLAY_REMOVALS)
+			.filter(node => !!node.remove)
+			.slice(0, limit)
 			.map((node) => {
 				console.info('[GDPR BLASTER] Removing overlay:', node)
-				node.remove && node.remove()
+				node.remove()
+				return node
 			})
 	}
 
-	function enqueue(a = 0, triggered = 0) {
-		const ms = Math.max(0, Math.min(10 ** (a - 1), MAX_CHECK_DELAY_MS))
-		setTimeout(() => {
-			let p = PASSES
-			let once = 1
-			while (p--) {
-				if (canSeeGdprDialogs()) {
-					closeGdprDialogs(MAX_DIALOG_REMOVALS)
-					triggered += once
-					once = 0
-				}
-				if (triggered && p === PASSES - 1) {
-					setTimeout(removeOverlays)
-					setTimeout(restoreScroll, 0)
-					setTimeout(restoreScroll, 10)
-					setTimeout(restoreScroll, 100)
-					setTimeout(restoreScroll, 1000)
-					triggered += once
-					once = 0
-				}
+	function getDialogsLeftToClose() {
+		return Math.max(0, MAX_DIALOG_REMOVALS - dialogsClosed)
+	}
+
+	function getOverlaysLeftToClose() {
+		return Math.max(0, MAX_OVERLAY_REMOVALS - overlaysClosed)
+	}
+
+	function check() {
+		const dltc = Math.min(getDialogsLeftToClose(), MAX_DIALOG_REMOVALS_PER_PASS)
+		const oltc = Math.min(getOverlaysLeftToClose(), MAX_OVERLAY_REMOVALS_PER_PASS)
+		let once = 1
+		if (dltc > 0) {
+			const closed = closeGdprDialogs(dltc)
+			if (closed.length) {
+				triggeredCount += once
+				once = 0
 			}
-			if (triggered < MAX_TRIGGERS && a < ATTEMPTS) {
-				enqueue(a + 1, triggered)
-			} else {
-				document.querySelector('html').style.overflow = ''
+		}
+		if (oltc > 0) {
+			const closed = removeOverlays(oltc)
+			overlaysClosed += closed.length
+			if (closed.length) {
+				triggeredCount += once
+				once = 0
+			}
+		}
+		if (once === 0) {
+			document.querySelector('html').style.overflow = ''
+			document.querySelector('html').classList.remove('sp-message-open')
+			restoreScroll()
+		}
+	}
+
+	function enqueue(i = 0, ms = 0) {
+		const before = Date.now()
+		setTimeout(() => {
+			check()
+			if (
+				triggeredCount <= MAX_TRIGGERS
+				&& i < MAX_ATTEMPTS
+				&& (getDialogsLeftToClose() || getOverlaysLeftToClose())
+			) {
+				const elapsed = Date.now() - before
+				const ms = Math.max(MIN_CHECK_DELAY_MS, Math.min(MAX_CHECK_DELAY_MS, MIN_CHECK_DELAY_MS + ((1.337 ** (i + 23)) / 42) - elapsed))
+				enqueue(i + 1, ms)
 			}
 		}, ms)
 	}
